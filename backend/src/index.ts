@@ -2,7 +2,6 @@
 
 //signaling server >>
 
-import { error } from "console";
 import { WebSocketServer , WebSocket } from "ws";
 
 //the signaling server send sdp files from the sender to the receiver and vice versa
@@ -49,7 +48,6 @@ wss.on('connection' , function connection(ws) {
                     sdp : message.spd
                 }));
             }
-        }
-           
+        }     
     });
 });
