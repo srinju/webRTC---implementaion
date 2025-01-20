@@ -19,15 +19,10 @@ let receiverSocket : any = null;
 
 wss.on('connection' , function connection(ws) {
 
-    ws.on('error' , function errorMessage(error) {
-        console.error("error occured" , error);
-    });
-
     ws.on('message' , function message(data : any) {
         const message = JSON.parse(data);
-        //console.log(message);
+        console.log(message);
 
-        //sender?
         if(message.type === 'sender'){
             senderSocket = ws;
         } else if(message.type === 'receiver'){
@@ -55,5 +50,6 @@ wss.on('connection' , function connection(ws) {
                 }));
             }
         }
+           
     });
 });
