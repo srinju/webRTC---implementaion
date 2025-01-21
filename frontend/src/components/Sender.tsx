@@ -40,6 +40,8 @@ const Sender = () => {
         };
     },[]); 
 
+    //create startScreeenSchare
+
     const StartSendingVideo = async () => {
         try {
             if(!socket) {
