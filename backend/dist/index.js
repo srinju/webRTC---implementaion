@@ -16,33 +16,37 @@ wss.on('connection', function connection(ws) {
         console.log(message);
         if (message.type === 'sender') {
             senderSocket = ws;
+            console.log('sender set');
         }
         else if (message.type === 'receiver') {
             receiverSocket = ws;
+            console.log('receiver set');
         }
         else if (message.type === 'create-offer') {
+            console.log("offer received by the receiver");
             receiverSocket === null || receiverSocket === void 0 ? void 0 : receiverSocket.send(JSON.stringify({
-                type: 'createOffer',
+                type: 'create-offer',
                 sdp: message.sdp
             }));
         }
         else if (message.type === 'create-answer') {
             senderSocket === null || senderSocket === void 0 ? void 0 : senderSocket.send(JSON.stringify({
-                type: "createAnswer",
+                type: "create-answer",
                 sdp: message.sdp
             }));
+            console.log("answer received by ther sendeer");
         }
         else if (message.type === 'iceCandidate') {
             if (senderSocket) {
                 receiverSocket.send(JSON.stringify({
-                    type: "ice candidate",
-                    sdp: message.sdp
+                    type: "iceCandidate",
+                    candidate: message.candidate
                 }));
             }
             else if (receiverSocket) {
                 senderSocket.send(JSON.stringify({
-                    type: "ice candidate",
-                    sdp: message.spd
+                    type: "iceCandidate",
+                    candidate: message.candidate
                 }));
             }
         }
