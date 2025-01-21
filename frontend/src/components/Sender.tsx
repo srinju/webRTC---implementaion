@@ -1,6 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react'
 
 const Sender = () => {
+
+    //the sender basically gets the ice candidate from the stun server sends it to the 
+    //signaling server to forward it to the receiver
+    //then creates an offer ,sets the local desc and sends it to the signaling server for the receiver
+    //and when gets answer from the receiver 
+    // it sets the remote desc
+    //and also upon receiving ice candidates from the receiver it adds the ice candidates
+
+    //and then get the video stream and send it throgh the connection
+
     const [socket, setSocket] = useState<null | WebSocket>(null);
     const [pc, setPc] = useState<RTCPeerConnection | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -38,6 +48,7 @@ const Sender = () => {
             }
             
             console.log("Creating peer connection...");
+            //create a peer connection
             const peerConnection = new RTCPeerConnection({
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' }
@@ -57,8 +68,11 @@ const Sender = () => {
             peerConnection.onnegotiationneeded = async () => {
                 console.log("Creating offer...");
                 try {
+                    //create offer
                     const offer = await peerConnection.createOffer();
+                    //setLocaaldesctiption of the created offer
                     await peerConnection.setLocalDescription(offer);
+                    //send the offer to the ws signaling server
                     socket.send(JSON.stringify({
                         type: "create-offer",
                         sdp: offer
@@ -68,6 +82,8 @@ const Sender = () => {
                 }
             }
 
+            //on getting ice candidates from the stun server send it to the signaling server
+            //in order to excahnge ice candidates between two clients
             peerConnection.onicecandidate = (event) => {
                 console.log("New ICE candidate:", event.candidate);
                 if(event.candidate) {
@@ -85,12 +101,14 @@ const Sender = () => {
 
                 if(message.type === 'create-answer') {
                     try {
+                        //set remote desc of the answer created from the receiver
                         await peerConnection.setRemoteDescription(new RTCSessionDescription(message.sdp));
                     } catch (error) {
                         console.error("Error setting remote description:", error);
                     }
                 } else if(message.type === 'iceCandidate' && message.candidate) {
                     try {
+                        //add the ice candidate that the receiver sent the sender
                         await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
                     } catch (error) {
                         console.error("Error adding ICE candidate:", error);
@@ -98,6 +116,7 @@ const Sender = () => {
                 }
             }
 
+            //get the user media
             console.log("Getting user media...");
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: true, 
@@ -121,7 +140,7 @@ const Sender = () => {
     }
 
     return (
-        <div className="w-full h-full flex flex-col items-center gap-4">
+        <div className="w-full h-full flex flex-col items-center gap-4 bg-black">
             <button 
                 onClick={StartSendingVideo}
                 className="px-4 py-2 bg-blue-500 text-white rounded"
@@ -132,7 +151,7 @@ const Sender = () => {
                 ref={videoRef}
                 autoPlay 
                 playsInline
-                muted
+                //muted
                 className="w-[640px] h-[480px] bg-black"
             />
         </div>
