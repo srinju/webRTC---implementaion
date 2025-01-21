@@ -34,17 +34,18 @@ wss.on('connection', function connection(ws) {
                 type: "create-answer",
                 sdp: message.sdp
             }));
-            console.log("answer received by ther sendeer");
+            console.log("answer received by the sender");
         }
         else if (message.type === 'iceCandidate') {
-            if (senderSocket) {
-                receiverSocket.send(JSON.stringify({
+            // Fixed: Send candidate instead of sdp
+            if (message.from === 'sender') {
+                receiverSocket === null || receiverSocket === void 0 ? void 0 : receiverSocket.send(JSON.stringify({
                     type: "iceCandidate",
                     candidate: message.candidate
                 }));
             }
-            else if (receiverSocket) {
-                senderSocket.send(JSON.stringify({
+            else if (message.from === 'receiver') {
+                senderSocket === null || senderSocket === void 0 ? void 0 : senderSocket.send(JSON.stringify({
                     type: "iceCandidate",
                     candidate: message.candidate
                 }));

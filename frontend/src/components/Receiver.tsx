@@ -1,85 +1,131 @@
-import React, { useEffect, useRef,  } from 'react'
+import React, { useEffect, useRef } from 'react'
 
 const Receiver = () => {
-    //const videoRef = useRef<HTMLVideoElement>(null);
-    //tell the server we are thre receiver
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
+
     useEffect(() => {
         const socket = new WebSocket('ws://localhost:8082');
+        let pc: RTCPeerConnection | null = null;
+
         socket.onopen = () => {
+            console.log("WebSocket Connected");
             socket.send(JSON.stringify({
-                type : "receiver" 
+                type: "receiver" 
             }));
         }
-        socket.onerror = (error) => {
-            console.error("websockert error  " , error);
-        }
-        //now the receiver side will receive the sdp from the sender and create an answer
-        //and send it to the signalking server
-        //the signaling serer recognises and forwards the sdp to the sender 
-        //and hence peer conncection between the 2 clients will be made
-        socket.onmessage = async (event) => {
-            //establish rtc peer conn>
-            const pc = new RTCPeerConnection();
-            const message = JSON.parse(event.data);
 
-            if(message.type === 'create-offer'){
-                //set the remote description of the sdp that came
-                pc.setRemoteDescription(message.sdp);
-                //get the ice candidate >
+        socket.onerror = (error) => {
+            console.error("WebSocket error ", error);
+        }
+
+        socket.onmessage = async (event) => {
+            const message = JSON.parse(event.data);
+            console.log("Received message:", message.type);
+
+            if(message.type === 'create-offer') {
+                console.log("Received offer. Creating peer connection...");
+                pc = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' }
+                    ]
+                });
+
+                // Log peer connection state changes
+                pc.onconnectionstatechange = () => {
+                    console.log("Connection state:", pc?.connectionState);
+                };
+
+                pc.oniceconnectionstatechange = () => {
+                    console.log("ICE Connection state:", pc?.iceConnectionState);
+                };
+
                 pc.onicecandidate = (event) => {
-                    console.log("event came to receiver ; " , event);
-                    if(event.candidate){
+                    console.log("New ICE candidate:", event.candidate);
+                    if(event.candidate) {
                         socket.send(JSON.stringify({
-                            type : "iceCandidate",
-                            from : 'receiver',
-                            candidate : event.candidate
-                        }))
+                            type: "iceCandidate",
+                            from: "receiver",
+                            candidate: event.candidate
+                        }));
                     }
                 }
 
-                //get the video >
-                pc.ontrack = (event) => {
-                    console.log("Received track:", event.track.kind);
-                    const video = document.createElement('video');
-                    video.style.width = '640px';
-                    video.style.height = '480px';
-                    document.body.appendChild(video);
-                    video.srcObject = new MediaStream([event.track]);
-                    video.autoplay = true;
-                    video.playsInline = true;
+                // Create a new MediaStream if it doesn't exist
+                if (!mediaStreamRef.current) {
+                    mediaStreamRef.current = new MediaStream();
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = mediaStreamRef.current;
+                    }
                 }
 
-                //create an answer
-                const answer = await pc.createAnswer();
-                //set loacldescription of the answer
-                await pc.setLocalDescription(answer);
-                //send the answer to the signaling server>
-                socket?.send(JSON.stringify({
-                    type : "create-answer",
-                    sdp : answer
-                }))
-            } else if(message.type === 'iceCandidate'){
-                //receive the ice candidate from the sender>
-                await pc.addIceCandidate(message.candidate);
+                pc.ontrack = (event) => {
+                    console.log("Received track:", event.track.kind, event.track);
+                    
+                    if (mediaStreamRef.current) {
+                        mediaStreamRef.current.addTrack(event.track);
+                    }
+
+                    // Force video element to play
+                    if (videoRef.current) {
+                        videoRef.current.play().catch(e => {
+                            console.error("Error playing video:", e);
+                        });
+                    }
+                };
+
+                try {
+                    console.log("Setting remote description...");
+                    await pc.setRemoteDescription(new RTCSessionDescription(message.sdp));
+                    console.log("Creating answer...");
+                    const answer = await pc.createAnswer();
+                    console.log("Setting local description...");
+                    await pc.setLocalDescription(answer);
+                    
+                    socket.send(JSON.stringify({
+                        type: "create-answer",
+                        sdp: answer
+                    }));
+                } catch (error) {
+                    console.error("Error in offer/answer process:", error);
+                }
+            } else if(message.type === 'iceCandidate' && message.candidate) {
+                try {
+                    if (pc) {
+                        console.log("Adding ICE candidate");
+                        await pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    }
+                } catch (error) {
+                    console.error("Error adding ICE candidate:", error);
+                }
             }
-            /*
-            const video = document.createElement("video");
-            document.body.appendChild(video);
-            const mediaStream = new MediaStream();
-            pc.ontrack = (event) => {
-                mediaStream.addTrack(event.track);
-                video.srcObject = mediaStream;
-                video.play();
-            };
-            */
         }
-    },[]);
+
+        // Cleanup function
+        return () => {
+            if (pc) {
+                pc.close();
+            }
+            if (socket) {
+                socket.close();
+            }
+            if (mediaStreamRef.current) {
+                mediaStreamRef.current.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
 
     return (
-        <div>
-            Receiver
+        <div className="w-full h-full flex justify-center items-center">
+            <video 
+                ref={videoRef}
+                autoPlay 
+                playsInline
+                muted // Add muted to avoid autoplay issues
+                className="w-[640px] h-[480px] bg-black"
+            />
         </div>
-    )
+    );
 }
 
-export default Receiver
+export default Receiver;
