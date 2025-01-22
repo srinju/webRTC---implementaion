@@ -1,50 +1,31 @@
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ice candidate log format >>
 
-Currently, two official plugins are available:
+{
+  type: 'iceCandidate', -- icecandidat
+  from: 'receiver', //from receiver that is the receiver is sending the ice candidate to the signaling sever
+  candidate: {
+    candidate: 'candidate:3002830482 1 udp 2122129151 172.18.141.153 59237 typ host generation 0 ufrag hRfK network-id 3 network-cost 10',
+    sdpMid: '0',
+    sdpMLineIndex: 0,
+    usernameFragment: 'hRfK'
+  }
+}
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+udp is the protocol used herer
+rtp and rtcp are video and audio transmitting protocols that are the ones webRTC uses
+2122129151 is the priority of the candidaite
+59237 candidates port number
+typ host indicats it is from a lcoal network
 
-## Expanding the ESLint configuration
+sdpMid: Specifies the media stream ID this candidate is associated with. Example: "0".
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+sdpMLineIndex: Indicates the media description index in the SDP. Example: 0.
 
-- Configure the top-level `parserOptions` property like this:
+usernameFragment: A unique identifier (ufrag) used during the ICE negotiation to pair candidates.
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+sdp logs contain hrfk or ufrag
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
-
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+Significance of hRfK
+In your logs, hRfK is a randomly generated ufrag assigned by WebRTC for the current session.
+Both sender and receiver logs include this same ufrag because they are participating in the same WebRTC session.

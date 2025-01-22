@@ -1,22 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 
 const Sender = () => {
-
-    //the sender basically gets the ice candidate from the stun server sends it to the 
-    //signaling server to forward it to the receiver
-    //then creates an offer ,sets the local desc and sends it to the signaling server for the receiver
-    //and when gets answer from the receiver 
-    // it sets the remote desc
-    //and also upon receiving ice candidates from the receiver it adds the ice candidates
-
-    //and then get the video stream and send it throgh the connection
-
     const [socket, setSocket] = useState<null | WebSocket>(null);
     const [pc, setPc] = useState<RTCPeerConnection | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
-    const screenRef = useRef<HTMLVideoElement>(null);
-    const [isScreenSharing , setIsScreenSharing] = useState(false);
-    const screenStreamRef = useRef<MediaStream | null>(null);
     
     useEffect(() => {
         const socket = new WebSocket('ws://localhost:8082');
@@ -43,55 +30,6 @@ const Sender = () => {
         };
     },[]); 
 
-    //create startScreeenSchare
-    const stopScreenShare = async () => {
-        
-        if(screenStreamRef.current){
-            screenStreamRef.current.getTracks().forEach(track => track.stop());
-            screenStreamRef.current = null;
-            setIsScreenSharing(false);
-        }
-    }
-
-    const StartScreenShare = async () => {
-        try {
-            if(!pc){
-                alert("start the camera first!!! (on camera to send the media over the p2p conn");
-                return;
-            }
-
-            //stop exisiting screen sharees>
-            stopScreenShare();
-
-            //get screen stream >
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video : true,
-                audio : true
-            });
-
-            screenStreamRef.current = screenStream;
-            setIsScreenSharing(true);
-
-            //display local screen share >>
-            if(screenRef.current){
-                screenRef.current.srcObject = screenStream;
-            }
-
-            //add screen tracks to peero connection
-            screenStream.getTracks().forEach(track => {
-                console.log("adding screen track : " ,track.kind);
-                pc.addTrack(track , screenStream);
-            });
-            //handle screen sharing stop>
-            screenStream.getVideoTracks()[0].onended = () => {
-                stopScreenShare();
-            }
-        } catch(error) {
-            console.error("error occured in start screen sharing : " , error);
-            setIsScreenSharing(false);
-        }
-    }
-
     const StartSendingVideo = async () => {
         try {
             if(!socket) {
@@ -100,7 +38,6 @@ const Sender = () => {
             }
             
             console.log("Creating peer connection...");
-            //create a peer connection
             const peerConnection = new RTCPeerConnection({
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' }
@@ -120,11 +57,8 @@ const Sender = () => {
             peerConnection.onnegotiationneeded = async () => {
                 console.log("Creating offer...");
                 try {
-                    //create offer
                     const offer = await peerConnection.createOffer();
-                    //setLocaaldesctiption of the created offer
                     await peerConnection.setLocalDescription(offer);
-                    //send the offer to the ws signaling server
                     socket.send(JSON.stringify({
                         type: "create-offer",
                         sdp: offer
@@ -134,8 +68,6 @@ const Sender = () => {
                 }
             }
 
-            //on getting ice candidates from the stun server send it to the signaling server
-            //in order to excahnge ice candidates between two clients
             peerConnection.onicecandidate = (event) => {
                 console.log("New ICE candidate:", event.candidate);
                 if(event.candidate) {
@@ -153,14 +85,12 @@ const Sender = () => {
 
                 if(message.type === 'create-answer') {
                     try {
-                        //set remote desc of the answer created from the receiver
                         await peerConnection.setRemoteDescription(new RTCSessionDescription(message.sdp));
                     } catch (error) {
                         console.error("Error setting remote description:", error);
                     }
                 } else if(message.type === 'iceCandidate' && message.candidate) {
                     try {
-                        //add the ice candidate that the receiver sent the sender
                         await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
                     } catch (error) {
                         console.error("Error adding ICE candidate:", error);
@@ -168,7 +98,6 @@ const Sender = () => {
                 }
             }
 
-            //get the user media
             console.log("Getting user media...");
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: true, 
@@ -192,39 +121,20 @@ const Sender = () => {
     }
 
     return (
-        <div className="w-full h-full flex flex-col items-center gap-4 bg-black">
+        <div className="w-full h-full flex flex-col items-center gap-4">
             <button 
                 onClick={StartSendingVideo}
                 className="px-4 py-2 bg-blue-500 text-white rounded"
             >
                 Start Video
             </button>
-            <button 
-                onClick={StartScreenShare}
-                className={`px-4 py-2 ${isScreenSharing ? 'bg-red-500' : 'bg-green-500'} text-white rounded`}
-            >
-                Start Screen Share
-            </button>
-            <div className='flex gap-4'>
-                <video 
-                    ref={videoRef}
-                    autoPlay 
-                    playsInline
-                    //muted
-                    className="w-[320px] h-[240px] bg-black"
-                />
-                
-
-                {isScreenSharing && (
-                    <video 
-                    ref={screenRef}
-                    autoPlay 
-                    playsInline
-                    //muted
-                    className="w-[320px] h-[240px] bg-black"
-                    />
-                )}
-            </div>
+            <video 
+                ref={videoRef}
+                autoPlay 
+                playsInline
+                //muted
+                className="w-[640px] h-[480px] bg-black"
+            />
         </div>
     )
 }

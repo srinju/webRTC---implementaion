@@ -25,7 +25,6 @@ const Receiver = () => {
 
             if(message.type === 'create-offer') {
                 console.log("Received offer. Creating peer connection...");
-                //create the peer conn
                 pc = new RTCPeerConnection({
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' }
@@ -41,8 +40,6 @@ const Receiver = () => {
                     console.log("ICE Connection state:", pc?.iceConnectionState);
                 };
 
-                //when get the ice candidates from the stun server send it to the signaling server
-                
                 pc.onicecandidate = (event) => {
                     console.log("New ICE candidate:", event.candidate);
                     if(event.candidate) {
@@ -76,11 +73,6 @@ const Receiver = () => {
                         });
                     }
                 };
-
-                //so after getting the offer from the sender we rendetr the video and
-                //create an answer , set the remot remote desc of the offer
-                //and set the local desc of the answer
-                //and also add the ice candidates from the
 
                 try {
                     console.log("Setting remote description...");
@@ -129,7 +121,7 @@ const Receiver = () => {
                 ref={videoRef}
                 autoPlay 
                 playsInline
-                muted // Add muted to avoid autoplay issues
+                //muted // Add muted to avoid autoplay issues
                 className="w-[640px] h-[480px] bg-black"
             />
         </div>
