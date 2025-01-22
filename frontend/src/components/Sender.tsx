@@ -14,6 +14,9 @@ const Sender = () => {
     const [socket, setSocket] = useState<null | WebSocket>(null);
     const [pc, setPc] = useState<RTCPeerConnection | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const screenRef = useRef<HTMLVideoElement>(null);
+    const [isScreenSharing , setIsScreenSharing] = useState(false);
+    const screenStreamRef = useRef<MediaStream | null>(null);
     
     useEffect(() => {
         const socket = new WebSocket('ws://localhost:8082');
@@ -41,6 +44,53 @@ const Sender = () => {
     },[]); 
 
     //create startScreeenSchare
+    const stopScreenShare = async () => {
+        
+        if(screenStreamRef.current){
+            screenStreamRef.current.getTracks().forEach(track => track.stop());
+            screenStreamRef.current = null;
+            setIsScreenSharing(false);
+        }
+    }
+
+    const StartScreenShare = async () => {
+        try {
+            if(!pc){
+                alert("start the camera first!!! (on camera to send the media over the p2p conn");
+                return;
+            }
+
+            //stop exisiting screen sharees>
+            stopScreenShare();
+
+            //get screen stream >
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video : true,
+                audio : true
+            });
+
+            screenStreamRef.current = screenStream;
+            setIsScreenSharing(true);
+
+            //display local screen share >>
+            if(screenRef.current){
+                screenRef.current.srcObject = screenStream;
+            }
+
+            //add screen tracks to peero connection
+            screenStream.getTracks().forEach(track => {
+                console.log("adding screen track : " ,track.kind);
+                pc.addTrack(track , screenStream);
+            });
+            //handle screen sharing stop>
+            screenStream.getVideoTracks()[0].onended = () => {
+                stopScreenShare();
+            }
+        } catch(error) {
+            console.error("error occured in start screen sharing : " , error);
+            setIsScreenSharing(false);
+        }
+    }
 
     const StartSendingVideo = async () => {
         try {
@@ -149,13 +199,32 @@ const Sender = () => {
             >
                 Start Video
             </button>
-            <video 
-                ref={videoRef}
-                autoPlay 
-                playsInline
-                //muted
-                className="w-[640px] h-[480px] bg-black"
-            />
+            <button 
+                onClick={StartScreenShare}
+                className={`px-4 py-2 ${isScreenSharing ? 'bg-red-500' : 'bg-green-500'} text-white rounded`}
+            >
+                Start Screen Share
+            </button>
+            <div className='flex gap-4'>
+                <video 
+                    ref={videoRef}
+                    autoPlay 
+                    playsInline
+                    //muted
+                    className="w-[320px] h-[240px] bg-black"
+                />
+                
+
+                {isScreenSharing && (
+                    <video 
+                    ref={screenRef}
+                    autoPlay 
+                    playsInline
+                    //muted
+                    className="w-[320px] h-[240px] bg-black"
+                    />
+                )}
+            </div>
         </div>
     )
 }
