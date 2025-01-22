@@ -99,12 +99,15 @@ const Sender = () => {
             }
 
             console.log("Getting user media...");
+            //the browser accesses the user camera and microphone 
+            //a mediaStream object is created , which contains multiple media stream tracks one for audio and one for video
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: true, 
                 audio: true 
             });
 
             // Add tracks to peer connection
+            //each track is added to the rtc peer connection so it gets transmitted to the receiver side over the p2p conn
             stream.getTracks().forEach(track => {
                 console.log("Adding track:", track.kind);
                 peerConnection.addTrack(track, stream);
